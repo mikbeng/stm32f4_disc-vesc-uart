@@ -27,16 +27,25 @@
 #include "stm32f4_discovery.h"
 
 #include "main.h"
-#include "defines.h"
-#include "tm_stm32f4_usb_vcp.h"
+
+//---- tm includes (libraries from Tilen Majerle, 2014) -----
 #include "tm_stm32f4_disco.h"
-			
 #include "tm_stm32f4_usart.h"
+#include "tm_stm32f4_usart_dma.h"
+//-----------------------------------------------------------
+
+//---- console -----
+#include "console.h"
+//------------------
 
 void TIM3_init(void);
 
 
 char string_buffer[300];
+
+/* Create USART working buffer */
+char USART_Buffer[100] = "Hello via USART2 with TX DMA\n";
+
 
 float motor_pos = 0.0f;
 float current_in = 0.0f;
@@ -44,7 +53,10 @@ float current_in = 0.0f;
 static void bldc_send_packet(unsigned char *data, unsigned int len) {
 
 	// Your implementation
-	TM_USART_Send(USART1, data, len);
+	//TM_USART_Send(USART1, data, len);
+
+	/* Send data with DMA */
+	TM_USART_DMA_Send(USART1, (uint8_t *)data, len);
 
 }
 
@@ -53,6 +65,7 @@ void bldc_val_received(mc_values *val) {
 	motor_pos = val->pid_pos;
 	current_in = val->current_in;
 
+	/*
 	sprintf(string_buffer, "Input voltage: %.2f V\r\n"
 			"Temp:          %.2f degC\r\n"
 			"Current motor: %.2f A\r\n"
@@ -62,6 +75,7 @@ void bldc_val_received(mc_values *val) {
 			"Duty cycle:    %.1f %%\r\n"
 			"Fault Code:    %s\r\n", val->v_in, val->temp_mos, val->current_motor, val->current_in, val->rpm, motor_pos, val->duty_now * 100.0, bldc_interface_fault_to_string(val->fault_code));
 	TM_USB_VCP_Puts(string_buffer);
+	*/
 }
 
 int main(void)
@@ -73,10 +87,13 @@ int main(void)
 	    SystemInit();
 	    RCC_GetClocksFreq(&RCC_Clocks);
 
+	    /* Init the CLI interface */
+	    ConsoleInit();
 
 	    /* Initialize LED's. Make sure to check settings for your board in tm_stm32f4_disco.h file */
 	    TM_DISCO_LedInit();
 
+	    /* Init timer 3 */
 	    TIM3_init();
 
 	    /* Initialize USB VCP */
@@ -84,6 +101,9 @@ int main(void)
 
 		/* Initialize USART1 at 9600 baud, TX: PB6, RX: PB7 */
 		TM_USART_Init(USART1, TM_USART_PinsPack_2, 115200);
+
+	    /* Init TX DMA for USART1 */
+	    TM_USART_DMA_Init(USART1);
 
 		// Initialize the bldc interface and provide the send function
 		bldc_interface_uart_init(bldc_send_packet);
@@ -96,19 +116,24 @@ int main(void)
 	            /* Turn on GREEN led */
 	            TM_DISCO_LedOn(LED_GREEN);
 	            TM_DISCO_LedOff(LED_RED);
+
 	            /* If something arrived at VCP */
+	            /*
 	            if (TM_USB_VCP_Getc(&c) == TM_USB_VCP_DATA_OK) {
-	                /* Return data back */
 	                //TM_USB_VCP_Putc(c);
 	            	//TM_USART_Puts(USART1, &c);
-	            	bldc_interface_get_values();
+	            	//bldc_interface_get_values();
 
-	            }
+	            }*/
 	        } else {
 	            /* USB not OK */
 	            TM_DISCO_LedOff(LED_GREEN);
 	            TM_DISCO_LedOn(LED_RED);
 	        }
+
+
+	        //Run the console process - Looks for new inputs, checks for endline, then runs the matching command.
+	        ConsoleProcess();
 	}
 }
 

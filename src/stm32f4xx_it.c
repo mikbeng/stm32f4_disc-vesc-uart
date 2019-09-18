@@ -167,13 +167,31 @@ void SysTick_Handler(void)
   */
 void TIM3_IRQHandler(void)
 {
+	static unsigned int postScaler10Hz=0,postScaler50Hz=0, postScaler500Hz=0;
 
-  if (TIM_GetITStatus(TIM3, TIM_IT_CC1) != RESET)
-  {
-    TIM_ClearITPendingBit(TIM3, TIM_IT_CC1);
+	if(++postScaler10Hz==100)//10Hz tasks
+	{
+		postScaler10Hz=0;
+	}
 
-    bldc_interface_uart_run_timer();
-  }
+	if(++postScaler50Hz==20)//50Hz tasks
+	{
+		postScaler50Hz=0;
+		bldc_interface_get_values();
+	}
+
+	if(++postScaler500Hz==2)//500Hz tasks
+	{
+		postScaler500Hz=0;
+	}
+
+	//1000Hz tasks - always run (tim3 counter clock = 1000Hz)
+	if (TIM_GetITStatus(TIM3, TIM_IT_CC1) != RESET)
+	{
+	TIM_ClearITPendingBit(TIM3, TIM_IT_CC1);
+
+	bldc_interface_uart_run_timer();
+	}
 }
 /******************************************************************************/
 /*                 STM32F4xx Peripherals Interrupt Handlers                   */

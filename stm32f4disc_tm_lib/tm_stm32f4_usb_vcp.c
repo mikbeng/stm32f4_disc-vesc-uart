@@ -140,7 +140,7 @@ uint16_t TM_USB_VCP_Gets(char* buffer, uint16_t bufsize) {
 	uint8_t c;
 	
 	/* Check for any data on USART */
-	if (TM_USB_VCP_BufferEmpty() || (!TM_USB_VCP_FindCharacter('\n') && !TM_USB_VCP_BufferFull())) {
+	if (TM_USB_VCP_BufferEmpty() || (!TM_USB_VCP_FindCharacter('\r') && !TM_USB_VCP_BufferFull())) {
 		return 0;
 	}
 	
@@ -151,7 +151,7 @@ uint16_t TM_USB_VCP_Gets(char* buffer, uint16_t bufsize) {
 		/* Save new data */
 		buffer[i] = (char) c;
 		/* Check for end of string */
-		if (buffer[i] == '\n') {
+		if (buffer[i] == '\r') {
 			i++;
 			/* Done */
 			break;
